@@ -5,8 +5,8 @@ import API from "../utils/API";
 import { Link } from "react-router-dom";
 import { Col, Row, Container } from "../components/Grid";
 import { List, ListItem } from "../components/List";
-import { Input, TextArea, FormBtn } from "../components/Form";
-import SearchResults from "../components/SearchResults";
+import { Input, TextArea, FormBtn, SearchBtn } from "../components/Form";
+// import SearchResults from "../components/SearchResults";
 
 class Books extends Component {
   state = {
@@ -14,25 +14,20 @@ class Books extends Component {
     title: "",
     author: "",
     synopsis: "",
-    image: "", 
+    image: "",
     link: ""
   };
 
   componentDidMount() {
     this.loadBooks();
-  };
+  }
 
   loadBooks = () => {
-    console.log('loading books');
-    
     API.getBooks()
-    .then(res =>{
-      console.log(res.data);
-      // this.setState({ books: res.data, title: "", author: "", synopsis: "" })
-            this.setState({ books: res.data })
-    }
-    )
-    .catch(err => console.log(err));
+      .then(res =>
+        this.setState({ books: res.data, title: "", author: "", synopsis: "", image: "", link: "" })
+      )
+      .catch(err => console.log(err));
   };
 
   deleteBook = id => {
@@ -50,7 +45,18 @@ class Books extends Component {
 
   handleFormSubmit = event => {
     event.preventDefault();
-    if (this.state.title) {
+    if (this.state.title && this.state.author) {
+      API.saveBook({
+        title: this.state.title,
+        author: this.state.author,
+        synopsis: this.state.synopsis,
+        image: this.state.image,
+        link: this.state.link
+      })
+        .then(res => this.loadBooks())
+        .catch(err => console.log(err));
+    }
+    else if (this.state.title) {
       API.searchBooks(this.state.title)
       .then(res => {
         console.log(res.data.items);
@@ -59,20 +65,20 @@ class Books extends Component {
       .catch(err => this.setState({ error: err.message }));
     }
   };
-  
-  handleSaveBook = event => {
-    event.preventDefault();
+
+  handleSaveBook = props => {
+    // event.preventDefault();
     API.saveBook({
-      title: this.state.title,
-      author: this.state.author,
-      synopsis: this.state.synopsis,
-      image: this.state.image,
+      title: props.books.book.volumeInfo.title,
+      author: props.books.book.volumeInfo.authors,
+      synopsis: props.books.book.volumeInfo.description,
+      image: props.books.book.volumeInfo.imageLinks.smallThumbnail,
+      link: props.books.book.volumeInfo.infoLink
 
     })
       .then(res => this.loadBooks())
       .catch(err => console.log(err));
-  };
-
+};
   render() {
     return (
       <Container fluid>
@@ -92,20 +98,38 @@ class Books extends Component {
                 value={this.state.author}
                 onChange={this.handleInputChange}
                 name="author"
-                placeholder="Author (required)"
+                placeholder="Author (required only for Manual Book Save)"
               />
               <TextArea
                 value={this.state.synopsis}
                 onChange={this.handleInputChange}
                 name="synopsis"
-                placeholder="Synopsis (Optional)"
+                placeholder="Synopsis (required only for Manual Book Save)"
+              />
+              <Input
+                value={this.state.image}
+                onChange={this.handleInputChange}
+                name="image"
+                placeholder="Image Link (required only for Manual Book Save)"
+              />
+              <Input
+                value={this.state.link}
+                onChange={this.handleInputChange}
+                name="googleapilink"
+                placeholder="Google Books API Link (required only for Manual Book Save)"
               />
               <FormBtn
+                disabled={!(this.state.author && this.state.title)}
+                onClick={this.handleFormSubmit}
+              >
+                Save Book
+              </FormBtn>
+              <SearchBtn
                 disabled={!(this.state.title)}
                 onClick={this.handleFormSubmit}
               >
-                Seacrh Book
-              </FormBtn>
+                Search Book
+              </SearchBtn>
             </form>
           </Col>
           <Col size="md-6 sm-12">
@@ -126,11 +150,13 @@ class Books extends Component {
                 ))}
               </List>
             ) : (
-              <h3>No Results to Display</h3>
-            )}
+                <h3>No Results to Display</h3>
+              )}
           </Col>
         </Row>
-        {this.state.books.length > 0 && <SearchResults books={this.state.books} handleSaveBook={this.handleSaveBook} />}
+        {/* <Row>
+          {this.state.books.length > 0 && <SearchResults handleSaveBook={this.handleSaveBook} />}
+        </Row> */}
       </Container>
     );
   }
